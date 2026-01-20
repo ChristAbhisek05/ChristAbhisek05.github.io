@@ -49,35 +49,6 @@
             font-size: 14px;
         }
 
-        .designers {
-            text-align: left;
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-        }
-
-        .designers h3 {
-            color: #667eea;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .designers ul {
-            list-style: none;
-            columns: 2;
-        }
-
-        .designers li {
-            padding: 5px 0;
-            color: #555;
-        }
-
-        .designers li:before {
-            content: "~*~ ";
-            color: #667eea;
-        }
-
         .input-group {
             margin-bottom: 20px;
             text-align: left;
@@ -90,7 +61,8 @@
             font-weight: 500;
         }
 
-        .input-group input {
+        .input-group input,
+        .input-group select {
             width: 100%;
             padding: 12px;
             border: 2px solid #e0e0e0;
@@ -99,7 +71,8 @@
             transition: border-color 0.3s;
         }
 
-        .input-group input:focus {
+        .input-group input:focus,
+        .input-group select:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -145,8 +118,14 @@
             align-items: center;
         }
 
-        .dashboard-header h1 {
+        .dashboard-header-left h1 {
             font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .user-welcome {
+            font-size: 14px;
+            opacity: 0.95;
         }
 
         .logout-btn {
@@ -346,30 +325,6 @@
             color: #667eea;
         }
 
-        .record-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .record-actions button {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 500;
-            font-size: 12px;
-        }
-
-        .btn-edit {
-            background: #3498db;
-            color: white;
-        }
-
-        .btn-delete {
-            background: #e74c3c;
-            color: white;
-        }
-
         .record-details {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -446,22 +401,24 @@
         <div class="login-container" id="loginPage">
             <h1>College Management System</h1>
             <p>Welcome! Please login to continue</p>
-            
-            <div class="designers">
-                <h3>Designed By:</h3>
-                <ul>
-                    <li>Radaram</li>
-                    <li>Abhisek</li>
-                    <li>Arati</li>
-                    <li>Rajib</li>
-                    <li>Damodar</li>
-                    <li>Mama</li>
-                    <li>Saranga</li>
-                </ul>
+
+            <div class="input-group">
+                <label for="userType">User Type:</label>
+                <select id="userType" required>
+                    <option value="">Select User Type</option>
+                    <option value="administrative">Administrative</option>
+                    <option value="local">Local User</option>
+                    <option value="staff">Staff Member</option>
+                </select>
             </div>
 
             <div class="input-group">
-                <label for="password">Enter Password:</label>
+                <label for="username">Username/Staff ID:</label>
+                <input type="text" id="username" placeholder="Enter username or staff ID">
+            </div>
+
+            <div class="input-group">
+                <label for="password">Password:</label>
                 <input type="password" id="password" placeholder="Enter password">
             </div>
             <button class="btn" onclick="login()">Login</button>
@@ -471,22 +428,29 @@
         <!-- Dashboard -->
         <div class="dashboard" id="dashboard">
             <div class="dashboard-header">
-                <h1>College Management System</h1>
+                <div class="dashboard-header-left">
+                    <h1>College Management System</h1>
+                    <div class="user-welcome" id="welcomeMsg">Welcome, User</div>
+                </div>
                 <button class="logout-btn" onclick="logout()">Logout</button>
             </div>
             <div class="dashboard-content">
-                <div class="menu-grid">
-                    <div class="menu-card" onclick="showSection('student')">
+                <div class="menu-grid" id="menuGrid">
+                    <div class="menu-card" onclick="showSection('student')" id="studentCard">
                         <h3>Student Records</h3>
                         <p>Manage student information and fees</p>
                     </div>
-                    <div class="menu-card" onclick="showSection('staff')">
+                    <div class="menu-card" onclick="showSection('staff')" id="staffCard">
                         <h3>Staff Records</h3>
                         <p>Manage staff information and salaries</p>
                     </div>
                     <div class="menu-card" onclick="showSection('about')">
                         <h3>About College</h3>
                         <p>Information about our institution</p>
+                    </div>
+                    <div class="menu-card" onclick="showSection('mySalary')" id="mySalaryCard" style="display:none;">
+                        <h3>My Salary</h3>
+                        <p>View your salary details</p>
                     </div>
                 </div>
 
@@ -537,6 +501,12 @@
                     </div>
                 </div>
 
+                <!-- My Salary Section (Staff Only) -->
+                <div class="submenu" id="mySalarySubmenu">
+                    <h2 style="color: #667eea; margin-bottom: 20px;">My Salary Details</h2>
+                    <div id="mySalaryContent"></div>
+                </div>
+
                 <!-- Forms Container -->
                 <div id="formsContainer"></div>
             </div>
@@ -548,37 +518,224 @@
         let students = [];
         let staff = [];
         let currentSection = null;
+        let currentUser = {
+            type: null,
+            username: null,
+            name: null,
+            staffId: null
+        };
 
-        // Login function
+        // User credentials
+        const credentials = {
+            administrative: { username: 'admin', password: 'admin123' },
+            local: { username: 'local', password: 'local123' },
+            staff: { password: 'staff123' }
+        };
+
+        // Initialize with demo staff
+        staff.push({
+            fid: '1001',
+            fan: 'Dr. Rajesh Kumar Sharma',
+            fq: 'Ph.D. in Physics',
+            fd: 'Professor',
+            fjd: '2015-07-01',
+            fdb: '1985-05-15',
+            fbg: 'O+',
+            fg: 'Male',
+            fc: 'General',
+            fcno: '9876543210',
+            feid: 'rajesh.sharma@gacrkl.ac.in',
+            fbac: '1234567890',
+            fbank: 'State Bank of India',
+            fifsc: 'SBIN0001234',
+            fbranch: 'Rourkela Main',
+            nsalary: 0
+        });
+
+        staff.push({
+            fid: '1002',
+            fan: 'Dr. Priya Patel',
+            fq: 'M.Sc. in Chemistry',
+            fd: 'HOD',
+            fjd: '2018-08-15',
+            fdb: '1988-09-20',
+            fbg: 'A+',
+            fg: 'Female',
+            fc: 'OBC',
+            fcno: '9123456789',
+            feid: 'priya.patel@gacrkl.ac.in',
+            fbac: '9876543210',
+            fbank: 'HDFC Bank',
+            fifsc: 'HDFC0001234',
+            fbranch: 'Rourkela',
+            nsalary: 0
+        });
+
+        // Education level structure
+        const educationStructure = {
+            'Intermediate': {
+                classes: ['+1 (11th)', '+2 (12th)'],
+                streams: ['Science', 'Arts', 'Commerce'],
+                hasDepartment: false
+            },
+            'Graduation': {
+                classes: ['1st Year', '2nd Year', '3rd Year'],
+                streams: ['Science', 'Arts', 'Commerce'],
+                hasDepartment: true,
+                departments: {
+                    'Science': ['Physics', 'Chemistry', 'Mathematics', 'Computer Science', 'Botany', 'Zoology'],
+                    'Arts': ['English', 'Odia', 'History', 'Political Science', 'Economics', 'Sociology', 'Psychology', 'Geography', 'Philosophy', 'Sanskrit', 'Hindi'],
+                    'Commerce': ['Accountancy', 'Business Studies', 'Economics']
+                }
+            },
+            'Post Graduate': {
+                classes: ['1st Year', '2nd Year'],
+                streams: ['Botany', 'English', 'Odia', 'Physics', 'Chemistry', 'Mathematics', 'Computer Science', 'Commerce', 'History', 'Political Science', 'Economics', 'Sociology', 'Psychology', 'Geography', 'Philosophy', 'Sanskrit', 'Hindi'],
+                hasDepartment: true,
+                departments: {
+                    'Botany': ['Botany'],
+                    'English': ['English'],
+                    'Odia': ['Odia'],
+                    'Physics': ['Physics'],
+                    'Chemistry': ['Chemistry'],
+                    'Mathematics': ['Mathematics'],
+                    'Computer Science': ['Computer Science'],
+                    'Commerce': ['Commerce'],
+                    'History': ['History'],
+                    'Political Science': ['Political Science'],
+                    'Economics': ['Economics'],
+                    'Sociology': ['Sociology'],
+                    'Psychology': ['Psychology'],
+                    'Geography': ['Geography'],
+                    'Philosophy': ['Philosophy'],
+                    'Sanskrit': ['Sanskrit'],
+                    'Hindi': ['Hindi']
+                }
+            }
+        };
+
+        // Bank data with IFSC codes
+        const bankData = {
+            'State Bank of India': 'SBIN0001234',
+            'HDFC Bank': 'HDFC0001234',
+            'ICICI Bank': 'ICIC0001234',
+            'Punjab National Bank': 'PUNB0123456',
+            'Bank of Baroda': 'BARB0123456',
+            'Canara Bank': 'CNRB0001234',
+            'Union Bank of India': 'UBIN0123456',
+            'Bank of India': 'BKID0001234',
+            'Indian Bank': 'IDIB0001234',
+            'Central Bank of India': 'CBIN0123456',
+            'UCO Bank': 'UCBA0001234',
+            'Axis Bank': 'UTIB0001234',
+            'Kotak Mahindra Bank': 'KKBK0001234',
+            'IndusInd Bank': 'INDB0001234',
+            'Yes Bank': 'YESB0001234'
+        };
+
+        // ===========================
+        // CORE NAVIGATION FUNCTIONS
+        // ===========================
+
         function login() {
+            const userType = document.getElementById('userType').value;
+            const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
             const errorMessage = document.getElementById('errorMessage');
-            
-            if (password === '8280') {
+
+            if (!userType) {
+                errorMessage.textContent = 'Please select user type!';
+                return;
+            }
+
+            if (!username || !password) {
+                errorMessage.textContent = 'Please enter both username and password!';
+                return;
+            }
+
+            let isValid = false;
+
+            if (userType === 'administrative') {
+                if (username === credentials.administrative.username && password === credentials.administrative.password) {
+                    currentUser.type = 'administrative';
+                    currentUser.username = username;
+                    currentUser.name = 'Administrator';
+                    isValid = true;
+                }
+            } else if (userType === 'local') {
+                if (username === credentials.local.username && password === credentials.local.password) {
+                    currentUser.type = 'local';
+                    currentUser.username = username;
+                    currentUser.name = 'Local User';
+                    isValid = true;
+                }
+            } else if (userType === 'staff') {
+                const staffMember = staff.find(s => s.fid == username);
+                if (staffMember && password === credentials.staff.password) {
+                    currentUser.type = 'staff';
+                    currentUser.staffId = username;
+                    currentUser.name = staffMember.fan;
+                    isValid = true;
+                } else if (!staffMember) {
+                    errorMessage.textContent = 'Staff ID not found!';
+                    return;
+                }
+            }
+
+            if (isValid) {
                 document.getElementById('loginPage').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
                 errorMessage.textContent = '';
+                setupDashboard();
             } else {
-                errorMessage.textContent = 'Invalid password! Please try again.';
+                errorMessage.textContent = 'Invalid credentials!';
             }
         }
 
-        // Logout function
+        function setupDashboard() {
+            document.getElementById('welcomeMsg').textContent = `Welcome, ${currentUser.name}!`;
+
+            const studentCard = document.getElementById('studentCard');
+            const staffCard = document.getElementById('staffCard');
+            const mySalaryCard = document.getElementById('mySalaryCard');
+
+            if (currentUser.type === 'administrative') {
+                studentCard.style.display = 'block';
+                staffCard.style.display = 'block';
+                mySalaryCard.style.display = 'none';
+            } else if (currentUser.type === 'local') {
+                studentCard.style.display = 'block';
+                staffCard.style.display = 'none';
+                mySalaryCard.style.display = 'none';
+            } else if (currentUser.type === 'staff') {
+                studentCard.style.display = 'none';
+                staffCard.style.display = 'none';
+                mySalaryCard.style.display = 'block';
+            }
+        }
+
         function logout() {
             document.getElementById('loginPage').style.display = 'block';
             document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('userType').value = '';
+            document.getElementById('username').value = '';
             document.getElementById('password').value = '';
+            currentUser = { type: null, username: null, name: null, staffId: null };
             hideAllSections();
         }
 
-        // Show section
         function showSection(section) {
             hideAllSections();
             currentSection = section;
-            document.getElementById(section + 'Submenu').classList.add('active');
+            
+            if (section === 'mySalary') {
+                document.getElementById('mySalarySubmenu').classList.add('active');
+                displayMySalary();
+            } else {
+                document.getElementById(section + 'Submenu').classList.add('active');
+            }
         }
 
-        // Hide all sections
         function hideAllSections() {
             document.querySelectorAll('.submenu').forEach(submenu => {
                 submenu.classList.remove('active');
@@ -586,7 +743,6 @@
             document.getElementById('formsContainer').innerHTML = '';
         }
 
-        // Show form
         function showForm(formType) {
             const container = document.getElementById('formsContainer');
             
@@ -630,7 +786,35 @@
             }
         }
 
-        // Student Forms
+        // ===========================
+        // STUDENT MANAGEMENT FUNCTIONS
+        // ===========================
+
+        function updateClassOptions() {
+            const level = document.getElementById('educationLevel').value;
+            const classSelect = document.getElementById('classSelect');
+            const streamSelect = document.getElementById('streamSelect');
+            
+            classSelect.innerHTML = '<option value="">Select Class</option>';
+            streamSelect.innerHTML = '<option value="">Select Stream</option>';
+            
+            if (level && educationStructure[level]) {
+                educationStructure[level].classes.forEach(cls => {
+                    const option = document.createElement('option');
+                    option.value = cls;
+                    option.textContent = cls;
+                    classSelect.appendChild(option);
+                });
+                
+                educationStructure[level].streams.forEach(stream => {
+                    const option = document.createElement('option');
+                    option.value = stream;
+                    option.textContent = stream;
+                    streamSelect.appendChild(option);
+                });
+            }
+        }
+
         function getAddStudentForm() {
             return `
                 <div class="form-container active">
@@ -648,21 +832,25 @@
                                 <input type="date" name="adt" required>
                             </div>
                             <div class="form-group">
-                                <label>Class:</label>
-                                <input type="text" name="cls" required>
+                                <label>Education Level:</label>
+                                <select id="educationLevel" name="level" required onchange="updateClassOptions()">
+                                    <option value="">Select Level</option>
+                                    <option value="Intermediate">Intermediate (+1/+2)</option>
+                                    <option value="Graduation">Graduation (Degree)</option>
+                                    <option value="Post Graduate">Post Graduate (Masters)</option>
+                                    <option value="BBA">BBA</option>
+                                </select>
                             </div>
                             <div class="form-group">
-                                <label>Stream:</label>
-                                <select name="stm" required>
-                                    <option value="">Select Stream</option>
-                                    <option value="Intermediate-Science">Intermediate - Science</option>
-                                    <option value="Intermediate-Arts">Intermediate - Arts</option>
-                                    <option value="Intermediate-Commerce">Intermediate - Commerce</option>
-                                    <option value="Graduation-Science">Graduation - Science</option>
-                                    <option value="Graduation-Arts">Graduation - Arts</option>
-                                    <option value="Graduation-Commerce">Graduation - Commerce</option>
-                                    <option value="Post Graduate">Post Graduate</option>
-                                    <option value="BBA">BBA</option>
+                                <label>Class:</label>
+                                <select id="classSelect" name="cls" required>
+                                    <option value="">First select education level</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Stream/Subject:</label>
+                                <select id="streamSelect" name="stm" required>
+                                    <option value="">First select education level</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -837,6 +1025,7 @@
                         </div>
                         <div class="record-details">
                             <div class="record-field"><strong>Roll No:</strong> ${student.rno}</div>
+                            <div class="record-field"><strong>Education Level:</strong> ${student.level}</div>
                             <div class="record-field"><strong>Class:</strong> ${student.cls}</div>
                             <div class="record-field"><strong>Stream:</strong> ${student.stm}</div>
                             <div class="record-field"><strong>Father:</strong> ${student.fn}</div>
@@ -882,6 +1071,7 @@
                             <h3>${student.sn} (Roll: ${student.rno})</h3>
                         </div>
                         <div class="record-details">
+                            <div class="record-field"><strong>Level:</strong> ${student.level}</div>
                             <div class="record-field"><strong>Class:</strong> ${student.cls}</div>
                             <div class="record-field"><strong>Stream:</strong> ${student.stm}</div>
                             <div class="record-field"><strong>Contact:</strong> ${student.cno}</div>
@@ -1012,38 +1202,41 @@
             
             if (studentIndex !== -1) {
                 const student = students[studentIndex];
-                const streamType = student.stm.split('-')[0];
+                const level = student.level;
+                const stream = student.stm;
                 
                 let baseFeesOptions = {};
-                if (streamType === 'Intermediate') {
+                
+                if (level === 'Intermediate') {
                     baseFeesOptions = {
                         'Science': { admission: 8000, exam: 980, sport: 800, lab: 500 },
                         'Arts': { admission: 7000, exam: 700, sport: 800, lab: 300 },
                         'Commerce': { admission: 7500, exam: 800, sport: 800, lab: 300 }
                     };
-                } else if (streamType === 'Graduation') {
+                } else if (level === 'Graduation') {
                     baseFeesOptions = {
                         'Science': { admission: 9000, exam: 980, sport: 800, lab: 500 },
                         'Arts': { admission: 8000, exam: 700, sport: 800, lab: 300 },
                         'Commerce': { admission: 8500, exam: 800, sport: 800, lab: 300 }
                     };
-                } else if (student.stm === 'BBA') {
+                } else if (level === 'BBA') {
                     baseFeesOptions = {
                         'BBA': { admission: 9000, exam: 880, sport: 800, lab: 200 }
                     };
-                } else {
+                } else if (level === 'Post Graduate') {
                     baseFeesOptions = {
-                        'PG': { admission: 8000, exam: 980, sport: 800, lab: 500 }
+                        'default': { admission: 8000, exam: 980, sport: 800, lab: 500 }
                     };
                 }
 
-                const streamKey = student.stm.includes('-') ? student.stm.split('-')[1] : (student.stm === 'BBA' ? 'BBA' : 'PG');
-                const fees = baseFeesOptions[streamKey] || baseFeesOptions['Science'];
+                const fees = baseFeesOptions[stream] || baseFeesOptions['default'] || baseFeesOptions['Science'];
 
                 document.getElementById('feesCalculation').innerHTML = `
                     <div style="margin-top: 20px; background: #f8f9fa; padding: 20px; border-radius: 10px;">
                         <h3 style="color: #667eea;">Student: ${student.sn}</h3>
                         <p><strong>Roll No:</strong> ${student.rno}</p>
+                        <p><strong>Level:</strong> ${student.level}</p>
+                        <p><strong>Class:</strong> ${student.cls}</p>
                         <p><strong>Stream:</strong> ${student.stm}</p>
                         
                         <div style="margin: 20px 0;">
@@ -1100,21 +1293,57 @@
             }, 2000);
         }
 
-        // Staff Forms
+        // ========================
+        // STAFF MANAGEMENT FUNCTIONS
+        // ========================
+
+        function updateIFSC() {
+            const bankSelect = document.getElementById('bankSelect');
+            const ifscInput = document.getElementById('ifscCode');
+            if (bankSelect && ifscInput) {
+                ifscInput.value = bankData[bankSelect.value] || '';
+            }
+        }
+
+        function updateFullName() {
+            const firstName = document.getElementById('firstName').value.trim();
+            const middleName = document.getElementById('middleName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const fullNameInput = document.getElementById('fullName');
+            
+            if (fullNameInput) {
+                const nameParts = [firstName, middleName, lastName].filter(part => part !== '');
+                fullNameInput.value = nameParts.join(' ');
+            }
+        }
+
         function getAddStaffForm() {
             return `
                 <div class="form-container active">
                     <button class="back-btn" onclick="document.getElementById('formsContainer').innerHTML = ''">← Back</button>
                     <h2>Add Staff Record</h2>
                     <form onsubmit="addStaff(event)">
+                        <h3 style="color: #667eea; margin: 20px 0 10px;">Personal Information</h3>
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>Staff ID:</label>
                                 <input type="number" name="fid" required>
                             </div>
                             <div class="form-group">
-                                <label>Staff Name:</label>
-                                <input type="text" name="fan" required>
+                                <label>First Name:</label>
+                                <input type="text" id="firstName" name="ffn" required onkeyup="updateFullName()">
+                            </div>
+                            <div class="form-group">
+                                <label>Middle Name:</label>
+                                <input type="text" id="middleName" name="fmn" onkeyup="updateFullName()">
+                            </div>
+                            <div class="form-group">
+                                <label>Last Name:</label>
+                                <input type="text" id="lastName" name="fln" required onkeyup="updateFullName()">
+                            </div>
+                            <div class="form-group" style="grid-column: 1/-1;">
+                                <label>Full Name (Auto-generated):</label>
+                                <input type="text" id="fullName" name="fan" readonly style="background: #f0f0f0;">
                             </div>
                             <div class="form-group">
                                 <label>Qualification:</label>
@@ -1171,18 +1400,80 @@
                                 <input type="tel" name="fcno" required>
                             </div>
                             <div class="form-group">
-                                <label>Bank Account:</label>
-                                <input type="text" name="fbac" required>
-                            </div>
-                            <div class="form-group">
                                 <label>Email:</label>
                                 <input type="email" name="feid" required>
                             </div>
-                            <div class="form-group" style="grid-column: 1/-1;">
-                                <label>Address:</label>
-                                <input type="text" name="fads" required>
+                        </div>
+
+                        <h3 style="color: #667eea; margin: 20px 0 10px;">Address Details</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>House No / Street:</label>
+                                <input type="text" name="fhno" required placeholder="e.g., 123, Main Street">
+                            </div>
+                            <div class="form-group">
+                                <label>At (Village/Area):</label>
+                                <input type="text" name="fat" required placeholder="e.g., Raghunathpali">
+                            </div>
+                            <div class="form-group">
+                                <label>PO (Post Office):</label>
+                                <input type="text" name="fpo" required placeholder="e.g., Rourkela">
+                            </div>
+                            <div class="form-group">
+                                <label>PS (Police Station):</label>
+                                <input type="text" name="fps" required placeholder="e.g., Sector-19">
+                            </div>
+                            <div class="form-group">
+                                <label>District:</label>
+                                <input type="text" name="fdist" required placeholder="e.g., Sundargarh">
+                            </div>
+                            <div class="form-group">
+                                <label>State:</label>
+                                <input type="text" name="fstate" required placeholder="e.g., Odisha">
+                            </div>
+                            <div class="form-group">
+                                <label>PIN Code:</label>
+                                <input type="text" name="fpin" required pattern="[0-9]{6}" placeholder="e.g., 769004">
                             </div>
                         </div>
+
+                        <h3 style="color: #667eea; margin: 20px 0 10px;">Bank Information</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Bank Account No:</label>
+                                <input type="text" name="fbac" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Select Bank:</label>
+                                <select id="bankSelect" name="fbank" required onchange="updateIFSC()">
+                                    <option value="">Select Bank</option>
+                                    <option value="State Bank of India">State Bank of India</option>
+                                    <option value="HDFC Bank">HDFC Bank</option>
+                                    <option value="ICICI Bank">ICICI Bank</option>
+                                    <option value="Punjab National Bank">Punjab National Bank</option>
+                                    <option value="Bank of Baroda">Bank of Baroda</option>
+                                    <option value="Canara Bank">Canara Bank</option>
+                                    <option value="Union Bank of India">Union Bank of India</option>
+                                    <option value="Bank of India">Bank of India</option>
+                                    <option value="Indian Bank">Indian Bank</option>
+                                    <option value="Central Bank of India">Central Bank of India</option>
+                                    <option value="UCO Bank">UCO Bank</option>
+                                    <option value="Axis Bank">Axis Bank</option>
+                                    <option value="Kotak Mahindra Bank">Kotak Mahindra Bank</option>
+                                    <option value="IndusInd Bank">IndusInd Bank</option>
+                                    <option value="Yes Bank">Yes Bank</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>IFSC Code (Auto-filled):</label>
+                                <input type="text" id="ifscCode" name="fifsc" readonly style="background: #f0f0f0;" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Branch Name:</label>
+                                <input type="text" name="fbranch" required>
+                            </div>
+                        </div>
+
                         <div class="form-actions">
                             <button type="submit" class="btn-primary">Add Staff</button>
                             <button type="button" class="btn-secondary" onclick="document.getElementById('formsContainer').innerHTML = ''">Cancel</button>
@@ -1458,11 +1749,125 @@
             }, 2000);
         }
 
-        // Allow Enter key for login
+        // ===========================
+        // STAFF SALARY VIEW
+        // ===========================
+
+        function displayMySalary() {
+            const staffMember = staff.find(s => s.fid == currentUser.staffId);
+            const container = document.getElementById('mySalaryContent');
+            
+            if (!staffMember) {
+                container.innerHTML = '<p style="color: #e74c3c;">Your record was not found. Please contact administrator.</p>';
+                return;
+            }
+
+            const salaryStructure = {
+                'Principal': 50000,
+                'HOD': 40000,
+                'Professor': 30000,
+                'Lab Incharge': 25000,
+                'Support Staff': 20000
+            };
+
+            const basicSalary = salaryStructure[staffMember.fd] || 20000;
+            const hra = Math.round(basicSalary * 0.10);
+            const da = Math.round(basicSalary * 0.08);
+            const ta = Math.round(basicSalary * 0.05);
+            const pf = Math.round(basicSalary * 0.06);
+            const it = Math.round(basicSalary * 0.10);
+            const totalAllowance = hra + da + ta;
+            const totalDeduction = pf + it;
+            const netSalary = basicSalary + totalAllowance - totalDeduction;
+
+            container.innerHTML = `
+                <div class="form-container active" style="display: block;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 10px; margin-bottom: 25px;">
+                        <h3 style="margin: 0 0 15px 0; font-size: 22px;">Personal Information</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
+                            <p style="margin: 5px 0;"><strong>Name:</strong> ${staffMember.fan}</p>
+                            <p style="margin: 5px 0;"><strong>Staff ID:</strong> ${staffMember.fid}</p>
+                            <p style="margin: 5px 0;"><strong>Designation:</strong> ${staffMember.fd}</p>
+                            <p style="margin: 5px 0;"><strong>Qualification:</strong> ${staffMember.fq}</p>
+                            <p style="margin: 5px 0;"><strong>Email:</strong> ${staffMember.feid}</p>
+                            <p style="margin: 5px 0;"><strong>Contact:</strong> ${staffMember.fcno}</p>
+                        </div>
+                    </div>
+
+                    <h3 style="color: #667eea; margin-bottom: 20px;">Salary Details</h3>
+                    
+                    <div style="background: white; padding: 20px; border: 2px solid #e0e0e0; border-radius: 10px; margin-bottom: 15px;">
+                        <h4 style="color: #2ecc71; margin-bottom: 15px; font-size: 18px;">Basic Salary</h4>
+                        <p style="font-size: 28px; font-weight: bold; color: #333; margin: 0;">₹${basicSalary.toLocaleString()}</p>
+                    </div>
+
+                    <div style="background: white; padding: 20px; border: 2px solid #e0e0e0; border-radius: 10px; margin-bottom: 15px;">
+                        <h4 style="color: #2ecc71; margin-bottom: 15px; font-size: 18px;">Allowances</h4>
+                        <div style="display: grid; gap: 10px;">
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                                <span>House Rent Allowance (HRA) - 10%</span>
+                                <strong>₹${hra.toLocaleString()}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                                <span>Dearness Allowance (DA) - 8%</span>
+                                <strong>₹${da.toLocaleString()}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                                <span>Travel Allowance (TA) - 5%</span>
+                                <strong>₹${ta.toLocaleString()}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 12px; background: #e8f5e9; border-radius: 5px; margin-top: 5px;">
+                                <span><strong>Total Allowances</strong></span>
+                                <strong style="color: #2ecc71; font-size: 18px;">₹${totalAllowance.toLocaleString()}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: white; padding: 20px; border: 2px solid #e0e0e0; border-radius: 10px; margin-bottom: 15px;">
+                        <h4 style="color: #e74c3c; margin-bottom: 15px; font-size: 18px;">Deductions</h4>
+                        <div style="display: grid; gap: 10px;">
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                                <span>Provident Fund (PF) - 6%</span>
+                                <strong>₹${pf.toLocaleString()}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                                <span>Income Tax (IT) - 10%</span>
+                                <strong>₹${it.toLocaleString()}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 12px; background: #ffebee; border-radius: 5px; margin-top: 5px;">
+                                <span><strong>Total Deductions</strong></span>
+                                <strong style="color: #e74c3c; font-size: 18px;">₹${totalDeduction.toLocaleString()}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 10px; text-align: center;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 20px;">Net Salary (Take Home)</h3>
+                        <p style="font-size: 42px; font-weight: bold; margin: 0;">₹${netSalary.toLocaleString()}</p>
+                        <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Per Month</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ===========================
+        // EVENT LISTENERS
+        // ===========================
+
         document.addEventListener('DOMContentLoaded', function() {
             const passwordInput = document.getElementById('password');
+            const usernameInput = document.getElementById('username');
+            
             if (passwordInput) {
                 passwordInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        login();
+                    }
+                });
+            }
+
+            if (usernameInput) {
+                usernameInput.addEventListener('keypress', function(e) {
                     if (e.key === 'Enter') {
                         login();
                     }
