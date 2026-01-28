@@ -192,17 +192,6 @@ let classGroups = {
             'Arts': []
         }
     },
-    'BBA': {
-        '1st Year': {
-            'Management': []
-        },
-        '2nd Year': {
-            'Management': []
-        },
-        '3rd Year': {
-            'Management': []
-        }
-    }
 };
 
 // Fixed Credentials
@@ -230,11 +219,6 @@ const educationStructure = {
         streams: ['Science', 'Commerce', 'Arts'],
         departments: ['Physics', 'Chemistry', 'Mathematics', 'Computer Science', 'Economics', 'History', 'English']
     },
-    'BBA': {
-        classes: ['1st Year', '2nd Year', '3rd Year'],
-        streams: ['Management'],
-        departments: ['Finance', 'Marketing', 'Human Resources', 'Operations']
-    }
 };
 
 // Fee Structure
@@ -257,12 +241,6 @@ const feeStructure = {
         sports: 1000,
         laboratory: 3000
     },
-    'BBA': {
-        admission: 15000,
-        examination: 2500,
-        sports: 1200,
-        laboratory: 1500
-    }
 };
 
 // Salary Structure
@@ -423,7 +401,7 @@ else if (currentUser.type === 'staff') {
         <div class="menu-item" onclick="showModule('staffProfile')">👤 My Profile</div>
         <div class="menu-item" onclick="showModule('salary')">💰 My Salary Details</div>
         <div class="menu-item" onclick="showModule('students')">👥 Students</div>
-        <div class="menu-item" onclick="showModule('viewAttendance')">📊 View Attendance</div>
+        <div class="menu-item" onclick="showModule('attendanceRegister')">📝 Attendance Register</div>
         <div class="menu-item" onclick="showModule('library')">📚 Library Management</div>
         <div class="menu-item" onclick="showModule('notices')">📢 Notice Board</div>
         <div class="menu-item" onclick="showModule('postNotice')">✍️ Post Notice</div>
@@ -543,12 +521,12 @@ if (module === 'students') {
         showMarkAttendance();
     }
     
-    // View Attendance (Staff only)
-    else if (module === 'viewAttendance') {
-        contentTitle.textContent = 'View Attendance';
-        contentSubtitle.textContent = 'View student attendance records';
-        showViewAttendance();
-    }
+    // Attendance Register (Staff only)
+else if (module === 'attendanceRegister') {
+    contentTitle.textContent = 'Attendance Register';
+    contentSubtitle.textContent = 'Mark student attendance for your class';
+    showAttendanceRegister();
+}
 // Class Timetable Module (Admin only)
     else if (module === 'timetable') {
         contentTitle.textContent = 'Class Timetable Management';
@@ -635,7 +613,7 @@ function showStudentSubmenu() {
             <button class="submenu-btn" onclick="showModifyStudent()">✏️ Modify Student</button>
             <button class="submenu-btn" onclick="showDeleteStudent()">🗑️ Delete Student</button>
             <button class="submenu-btn" onclick="showCollectFees()">💵 Collect Fees</button>
-            <button class="submenu-btn" onclick="showAssignSection()">👥 Assign Section & Mentor</button>
+            <button class="submenu-btn" onclick="showExportToExcel()">📊 Export to Excel</button>
 
         </div>
         <div id="studentFormArea"></div>
@@ -670,7 +648,6 @@ function showAddStudentForm() {
                                 <option value="Intermediate">Intermediate</option>
                                 <option value="Graduation">Graduation</option>
                                 <option value="Post Graduate">Post Graduate</option>
-                                <option value="BBA">BBA</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -2144,13 +2121,12 @@ function showCreateTimetable() {
                         
                         <div class="form-group">
                             <label>Stream *</label>
-                            <select name="stream" id="ttStream" required disabled>
+                            <select name="stream" id="ttStream" required disabled onchange="updateTimetableSectionVisibility(); updateTimetableDepartmentVisibility();">
+                            
                                 <option value="">Select Class First</option>
                             </select>
                         </div>
-                        
-
-<div class="form-group" id="ttSectionGroup">
+<div class="form-group" id="ttSectionGroup" style="display: none;">
     <label>Section</label>
     <select name="section" id="ttSection">
         <option value="">Select Section (Optional)</option>
@@ -2160,8 +2136,6 @@ function showCreateTimetable() {
         <option value="D">Section D</option>
     </select>
 </div>
-
-
                         <div class="form-group" id="ttDepartmentGroup" style="display: none;">
                             <label>Department *</label>
                             <select name="department" id="ttDepartment">
@@ -2243,15 +2217,18 @@ function updateTimetableClassOptions() {
     });
     classSelect.disabled = false;
     
-    // Agar Graduation ya Post Graduate hai to department dikhao
+   // Department populate karo (but initially hide kar do)
+    // Stream select hone pe decide hoga show/hide
     if (eduLevel === 'Graduation' || eduLevel === 'Post Graduate') {
-        departmentGroup.style.display = 'block';
         departmentSelect.innerHTML = '<option value="">Select Department</option>';
         structure.departments.forEach(dept => {
             departmentSelect.innerHTML += `<option value="${dept}">${dept}</option>`;
         });
-        departmentSelect.required = true;
+        // Initially hide, stream selection pe show/hide hoga
+        departmentGroup.style.display = 'none';
+        departmentSelect.required = false;
     } else {
+        departmentGroup.style.display = 'none';
         departmentSelect.required = false;
     }
 }
@@ -2276,7 +2253,49 @@ function updateTimetableStreamOptions() {
     streamSelect.disabled = false;
 }
 
+function updateTimetableDepartmentVisibility() {
+    const eduLevel = document.getElementById('ttEduLevel').value;
+    const stream = document.getElementById('ttStream').value;
+    const departmentGroup = document.getElementById('ttDepartmentGroup');
+    const departmentSelect = document.getElementById('ttDepartment');
+    
+    // Department sirf tab dikhao jab:
+    // 1. Graduation ya Post Graduate ho
+    // 2. AUR Stream Commerce NAHI ho
+    
+    if ((eduLevel === 'Graduation' || eduLevel === 'Post Graduate') && stream && stream !== 'Commerce') {
+        // Science ya Arts mein department dikhao
+        departmentGroup.style.display = 'block';
+        departmentSelect.required = true;
+    } else {
+        // Commerce mein ya baaki cases mein department hide karo
+        departmentGroup.style.display = 'none';
+        departmentSelect.required = false;
+        departmentSelect.value = ''; // Reset value
+    }
+}
 
+function updateTimetableSectionVisibility() {
+    const eduLevel = document.getElementById('ttEduLevel').value;
+    const stream = document.getElementById('ttStream').value;
+    const sectionGroup = document.getElementById('ttSectionGroup');
+    
+    // Section show karo sirf:
+    // 1. Intermediate mein (all streams)
+    // 2. Graduation/Post Graduate mein sirf Commerce stream ke liye
+    
+    if (eduLevel === 'Intermediate') {
+        // Intermediate mein hamesha section dikhao
+        sectionGroup.style.display = 'block';
+    } else if ((eduLevel === 'Graduation' || eduLevel === 'Post Graduate') && stream === 'Commerce') {
+        // Graduation/PG mein sirf Commerce ke liye section dikhao
+        sectionGroup.style.display = 'block';
+    } else {
+        // Baaki sab cases mein section hide karo
+        sectionGroup.style.display = 'none';
+        document.getElementById('ttSection').value = ''; // Reset value
+    }
+}
 
 function addPeriodField() {
     const container = document.getElementById('periodsContainer');
@@ -3393,9 +3412,9 @@ function showAddNoticeForm() {
                             <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}">
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Notice Title *</label>
-                        <input type="text" name="title" required placeholder="Enter notice title">
+                   <div class="form-group">
+                        <label>Notice Number *</label>
+                        <input type="text" name="noticeNumber" required placeholder="Enter notice number (e.g., NOT-001)">
                     </div>
                     <div class="form-group">
                         <label>Notice Content *</label>
@@ -3486,7 +3505,7 @@ function displayNotices() {
             <div class="record-card" style="border-left: 5px solid ${priorityColors[notice.priority]};">
                 <div class="record-header">
                     <div>
-                        <h3>${notice.title}</h3>
+                        <h3>${notice.noticeNumber}</h3>
                         <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 13px; color: #666;">
                             <span style="background: ${priorityColors[notice.priority]}; color: white; padding: 4px 12px; border-radius: 12px; font-weight: 600;">${notice.priority} Priority</span>
                             <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px;">${notice.category}</span>
@@ -3546,7 +3565,7 @@ function deleteNoticeConfirm(noticeId) {
         return;
     }
 
-    if (confirm(`Are you sure you want to delete notice "${notice.title}" (${noticeId})?`)) {
+    if (confirm(`Are you sure you want to delete notice "${notice.noticeNumber}" (${noticeId})?`)) {
         const index = notices.findIndex(n => n.noticeId === noticeId);
         notices.splice(index, 1);
         
@@ -3906,8 +3925,8 @@ function showPostMenteeNotice() {
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Notice Title *</label>
-                        <input type="text" name="title" required placeholder="Enter notice title">
+                        <label>Notice Number *</label>
+                        <input type="text" name="noticeNumber" required placeholder="Enter notice number (e.g., NOT-001)">
                     </div>
                     <div class="form-group">
                         <label>Notice Content *</label>
@@ -3969,9 +3988,9 @@ function showPostClassNotice() {
                             <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}">
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Notice Title *</label>
-                        <input type="text" name="title" required placeholder="Enter notice title">
+                   <div class="form-group">
+                        <label>Notice Number *</label>
+                        <input type="text" name="noticeNumber" required placeholder="Enter notice number (e.g., NOT-001)">
                     </div>
                     <div class="form-group">
                         <label>Notice Content *</label>
@@ -4180,151 +4199,319 @@ function markAttendance(event) {
     }, 2000);
 }
 
-function showViewAttendance() {
+function showAttendanceRegister() {
     const mainContent = document.getElementById('mainContent');
     
     mainContent.innerHTML = `
-        <div class="form-container active">
-            <div class="form-header">
-                <h2>View Student Attendance</h2>
+        <div class="attendance-register-container">
+            <!-- Attendance Mode Selection -->
+            <div class="mode-selector">
+                <h3>Select Attendance Mode</h3>
+                <div class="mode-buttons">
+                    <button class="mode-btn active" onclick="switchAttendanceMode('facial')">
+                        📸 Facial Recognition
+                    </button>
+                    <button class="mode-btn" onclick="switchAttendanceMode('manual')">
+                        ✍️ Manual Entry
+                    </button>
+                </div>
             </div>
-            
-            <div class="form-section">
-                <h3>Search Filters</h3>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Roll Number</label>
-                        <input type="text" id="searchAttendanceRoll" placeholder="Enter roll number">
+
+            <!-- Facial Recognition Mode -->
+            <div id="facialMode" class="attendance-mode active">
+                <div class="facial-container">
+                    <div class="camera-section">
+                        <h3>Live Camera Feed</h3>
+                        <video id="cameraFeed" autoplay playsinline></video>
+                        <canvas id="faceCanvas" style="display:none;"></canvas>
+                        
+                        <div class="camera-controls">
+                            <button class="btn-primary" onclick="startCamera()">📷 Start Camera</button>
+                            <button class="btn-secondary" onclick="stopCamera()">⏹️ Stop Camera</button>
+                            <button class="btn-success" onclick="captureAttendance()">✅ Capture & Mark</button>
+                        </div>
+                        
+                        <div id="detectionStatus" class="status-message"></div>
                     </div>
-                    <div class="form-group">
-                        <label>From Date</label>
-                        <input type="date" id="searchAttendanceFromDate">
-                    </div>
-                    <div class="form-group">
-                        <label>To Date</label>
-                        <input type="date" id="searchAttendanceToDate">
+
+                    <div class="recognized-section">
+                        <h3>Recognized Students</h3>
+                        <div id="recognizedList"></div>
                     </div>
                 </div>
-                <button class="btn-primary" onclick="searchAttendance()" style="max-width: 200px; margin-top: 15px;">Search Attendance</button>
             </div>
-            
-            <div id="attendanceSearchResults"></div>
+
+            <!-- Manual Mode -->
+            <div id="manualMode" class="attendance-mode" style="display:none;">
+                <div class="manual-container">
+                    <div class="filter-section">
+                        <h3>Select Class</h3>
+                        <select id="classFilter" onchange="loadStudentsForAttendance()">
+                            <option value="">Select Class</option>
+                            ${generateClassOptions()}
+                        </select>
+                        
+                        <input type="date" id="attendanceDate" value="${new Date().toISOString().split('T')[0]}">
+                    </div>
+
+                    <div id="studentAttendanceList" class="student-list"></div>
+                    
+                    <button class="btn-primary" onclick="submitManualAttendance()">💾 Submit Attendance</button>
+                </div>
+            </div>
+
+            <!-- Today's Summary -->
+            <div class="attendance-summary">
+                <h3>Today's Attendance Summary</h3>
+                <div id="todaySummary"></div>
+            </div>
         </div>
     `;
 }
 
-function searchAttendance() {
-    const rollNo = document.getElementById('searchAttendanceRoll').value.trim();
-    const fromDate = document.getElementById('searchAttendanceFromDate').value;
-    const toDate = document.getElementById('searchAttendanceToDate').value;
-    const resultsDiv = document.getElementById('attendanceSearchResults');
+function generateClassOptions() {
+    let options = '';
+    const uniqueClasses = new Set();
     
-    if (!rollNo) {
-        resultsDiv.innerHTML = '<div class="message error-message-box">Please enter a roll number</div>';
-        return;
-    }
+    students.forEach(student => {
+        const classKey = `${student.educationLevel} - ${student.class} - ${student.stream}`;
+        uniqueClasses.add(classKey);
+    });
     
-    const student = students.find(s => s.rollNo === rollNo);
-    if (!student) {
-        resultsDiv.innerHTML = '<div class="message error-message-box">Student not found</div>';
-        return;
-    }
+    uniqueClasses.forEach(classKey => {
+        options += `<option value="${classKey}">${classKey}</option>`;
+    });
     
-    let studentAttendance = attendance.filter(a => a.rollNo === rollNo);
-    
-    // Apply date filters
-    if (fromDate) {
-        studentAttendance = studentAttendance.filter(a => a.date >= fromDate);
-    }
-    if (toDate) {
-        studentAttendance = studentAttendance.filter(a => a.date <= toDate);
-    }
-    
-    if (studentAttendance.length === 0) {
-        resultsDiv.innerHTML = `
-            <div class="message error-message-box">
-                No attendance records found for ${student.studentName}
-            </div>
-        `;
-        return;
-    }
+    return options;
+}
 
-    // Calculate statistics
-    const totalClasses = studentAttendance.length;
-    const present = studentAttendance.filter(a => a.status === 'Present').length;
-    const absent = studentAttendance.filter(a => a.status === 'Absent').length;
-    const leave = studentAttendance.filter(a => a.status === 'Leave').length;
-    const percentage = Math.round((present / totalClasses) * 100);
+function switchAttendanceMode(mode) {
+    const facialMode = document.getElementById('facialMode');
+    const manualMode = document.getElementById('manualMode');
+    const modeButtons = document.querySelectorAll('.mode-btn');
     
-    resultsDiv.innerHTML = `
-        <div class="salary-card" style="margin-top: 25px;">
-            <h3>${student.studentName} - Attendance Report</h3>
-            <div class="salary-breakdown">
-                <div class="salary-row">
-                    <span>Roll Number:</span>
-                    <strong>${student.rollNo}</strong>
-                </div>
-                <div class="salary-row">
-                    <span>Class:</span>
-                    <strong>${student.class}</strong>
-                </div>
-                <div class="salary-row">
-                    <span>Total Classes:</span>
-                    <strong>${totalClasses}</strong>
-                </div>
-                <div class="salary-row">
-                    <span>Present:</span>
-                    <strong style="color: #27ae60">${present}</strong>
-                </div>
-                <div class="salary-row">
-                    <span>Absent:</span>
-                    <strong style="color: #e74c3c">${absent}</strong>
-                </div>
-                <div class="salary-row">
-                    <span>Leave:</span>
-                    <strong style="color: #f39c12">${leave}</strong>
-                </div>
-                <div class="salary-row total">
-                    <span>Attendance Percentage:</span>
-                    <strong>${percentage}%</strong>
-                </div>
-            </div>
-        </div>
+    modeButtons.forEach(btn => btn.classList.remove('active'));
+    
+    if (mode === 'facial') {
+        facialMode.style.display = 'block';
+        manualMode.style.display = 'none';
+        modeButtons[0].classList.add('active');
+    } else {
+        facialMode.style.display = 'none';
+        manualMode.style.display = 'block';
+        modeButtons[1].classList.add('active');
+    }
+}
+
+// Camera Functions
+let cameraStream = null;
+
+async function startCamera() {
+    try {
+        const video = document.getElementById('cameraFeed');
         
-        <div class="form-container active" style="margin-top: 25px;">
-            <div class="form-header">
-                <h2>Date-wise Records</h2>
-            </div>
-            <div class="records-list">
-                ${studentAttendance.map(record => `
-                    <div class="record-card" style="border-left: 5px solid ${
-                        record.status === 'Present' ? '#27ae60' : 
-                        record.status === 'Absent' ? '#e74c3c' : '#f39c12'
-                    };">
-                        <div class="record-details">
-                            <div class="record-field">
-                                <strong>Date:</strong>
-                                <span>${record.date}</span>
-                            </div>
-                            <div class="record-field">
-                                <strong>Status:</strong>
-                                <span style="color: ${
-                                    record.status === 'Present' ? '#27ae60' : 
-                                    record.status === 'Absent' ? '#e74c3c' : '#f39c12'
-                                }; font-weight: 600;">${record.status}</span>
-                            </div>
-                            <div class="record-field">
-                                <strong>Marked By:</strong>
-                                <span>${record.markedBy}</span>
-                            </div>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
+        // Check if browser supports camera
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            document.getElementById('detectionStatus').innerHTML = 
+                '<span style="color: red;">❌ Your browser does not support camera access</span>';
+            return;
+        }
+        
+        // Request camera permission with better constraints
+        cameraStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                facingMode: 'user',
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            },
+            audio: false
+        });
+        
+        video.srcObject = cameraStream;
+        
+        // Wait for video to be ready
+        video.onloadedmetadata = () => {
+            video.play();
+            document.getElementById('detectionStatus').innerHTML = 
+                '<span style="color: green;">✅ Camera started successfully!</span>';
+        };
+        
+    } catch (error) {
+        console.error('Camera error:', error);
+        
+        let errorMsg = '';
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            errorMsg = '❌ Camera permission denied. Please allow camera access in browser settings.';
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+            errorMsg = '❌ No camera found on this device.';
+        } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+            errorMsg = '❌ Camera is already in use by another application.';
+        } else {
+            errorMsg = '❌ Camera access denied or unavailable. Error: ' + error.message;
+        }
+        
+        document.getElementById('detectionStatus').innerHTML = 
+            `<span style="color: red;">${errorMsg}</span>`;
+    }
+}
+
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+        document.getElementById('cameraFeed').srcObject = null;
+        document.getElementById('detectionStatus').innerHTML = 
+            '<span style="color: gray;">⏹️ Camera stopped</span>';
+    }
+}
+
+function captureAttendance() {
+    const video = document.getElementById('cameraFeed');
+    const canvas = document.getElementById('faceCanvas');
+    const context = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0);
+    
+    // Simulate face detection (real implementation would use ML model)
+    const detectedStudent = simulateFaceRecognition();
+    
+    if (detectedStudent) {
+        markAttendanceForStudent(detectedStudent);
+        updateRecognizedList(detectedStudent);
+    } else {
+        document.getElementById('detectionStatus').innerHTML = 
+            '<span style="color: orange;">⚠️ No face detected or student not recognized</span>';
+    }
+}
+
+function simulateFaceRecognition() {
+    // Simulation - random student selection for demo
+    if (students.length > 0) {
+        return students[Math.floor(Math.random() * students.length)];
+    }
+    return null;
+}
+
+function markAttendanceForStudent(student) {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Check if already marked
+    const existing = attendance.find(a => 
+        a.rollNo === student.rollNo && a.date === today
+    );
+    
+    if (!existing) {
+        attendance.push({
+            rollNo: student.rollNo,
+            studentName: student.studentName,
+            date: today,
+            status: 'Present',
+            markedBy: currentUser.username,
+            method: 'Facial Recognition',
+            timestamp: new Date().toLocaleTimeString()
+        });
+        
+        document.getElementById('detectionStatus').innerHTML = 
+            `<span style="color: green;">✅ Attendance marked for ${student.studentName}</span>`;
+    } else {
+        document.getElementById('detectionStatus').innerHTML = 
+            `<span style="color: orange;">⚠️ ${student.studentName} already marked present today</span>`;
+    }
+}
+
+function updateRecognizedList(student) {
+    const list = document.getElementById('recognizedList');
+    const time = new Date().toLocaleTimeString();
+    
+    list.innerHTML += `
+        <div class="recognized-item">
+            <span>✅ ${student.studentName} (${student.rollNo})</span>
+            <small>${time}</small>
         </div>
     `;
-}   
+}
 
+// Manual Attendance Functions
+function loadStudentsForAttendance() {
+    const classFilter = document.getElementById('classFilter').value;
+    const listDiv = document.getElementById('studentAttendanceList');
+    
+    if (!classFilter) {
+        listDiv.innerHTML = '<p>Please select a class</p>';
+        return;
+    }
+    
+    const [educationLevel, classYear, stream] = classFilter.split(' - ');
+    const filteredStudents = students.filter(s => 
+        s.educationLevel === educationLevel && 
+        s.class === classYear && 
+        s.stream === stream
+    );
+    
+    if (filteredStudents.length === 0) {
+        listDiv.innerHTML = '<p>No students found for this class</p>';
+        return;
+    }
+    
+    let html = '<table class="attendance-table"><thead><tr><th>Roll No</th><th>Name</th><th>Present</th><th>Absent</th></tr></thead><tbody>';
+    
+    filteredStudents.forEach(student => {
+        html += `
+            <tr>
+                <td>${student.rollNo}</td>
+                <td>${student.studentName}</td>
+                <td><input type="radio" name="attendance_${student.rollNo}" value="Present" checked></td>
+                <td><input type="radio" name="attendance_${student.rollNo}" value="Absent"></td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    listDiv.innerHTML = html;
+}
+
+function submitManualAttendance() {
+    const date = document.getElementById('attendanceDate').value;
+    const radios = document.querySelectorAll('input[type="radio"]:checked');
+    
+    if (radios.length === 0) {
+        alert('❌ Please select a class first!');
+        return;
+    }
+    
+    let marked = 0;
+    radios.forEach(radio => {
+        const rollNo = radio.name.replace('attendance_', '');
+        const status = radio.value;
+        const student = students.find(s => s.rollNo === rollNo);
+        
+        if (student) {
+            // Check if already marked for this date
+            const existing = attendance.find(a => 
+                a.rollNo === rollNo && a.date === date
+            );
+            
+            if (!existing) {
+                attendance.push({
+                    rollNo: rollNo,
+                    studentName: student.studentName,
+                    date: date,
+                    status: status,
+                    markedBy: currentUser.username,
+                    method: 'Manual',
+                    timestamp: new Date().toLocaleTimeString()
+                });
+                marked++;
+            }
+        }
+    });
+    
+    alert(`✅ Attendance marked for ${marked} students!`);
+    document.getElementById('studentAttendanceList').innerHTML = '';
+    document.getElementById('classFilter').value = '';
+}
 
 
 
@@ -4398,7 +4585,6 @@ function showFilteredClassView() {
                             <option value="Intermediate">Intermediate</option>
                             <option value="Graduation">Graduation</option>
                             <option value="Post Graduate">Post Graduate</option>
-                            <option value="BBA">BBA</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -5477,7 +5663,6 @@ function markMyAttendance(subject, time) {
     dismissAttendanceAlert();
     alert('✅ Attendance marked successfully!');
 }
-
 function dismissAttendanceAlert() {
     const alert = document.querySelector('.attendance-alert');
     if (alert) alert.remove();
@@ -5485,7 +5670,216 @@ function dismissAttendanceAlert() {
     const badge = document.getElementById('attendanceBadge');
     if (badge) badge.style.display = 'none';
 }
+// ==========================================
+// EXPORT TO EXCEL FUNCTIONALITY
+// ==========================================
+function showExportToExcel() {
+    const formArea = document.getElementById('studentFormArea');
+    formArea.innerHTML = `
+        <div class="form-container active">
+            <div class="form-header">
+                <h2>📊 Export Students to Excel</h2>
+                <button class="back-btn" onclick="document.getElementById('studentFormArea').innerHTML=''">← Back</button>
+            </div>
+            
+            <form onsubmit="exportStudentsToExcel(event)">
+                <div class="form-section">
+                    <h3>Select Filter Criteria</h3>
+                    
+                    <div class="form-group">
+                        <label>Education Level *</label>
+                        <select name="educationLevel" id="exportEducationLevel" required onchange="updateExportFields()">
+                            <option value="">Select Education Level</option>
+                            <option value="Intermediate">Intermediate</option>
+                            <option value="Graduation">Graduation</option>
+                            <option value="Post Graduate">Post Graduate</option>
+                            <option value="BBA">BBA</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Class *</label>
+                        <select name="class" id="exportClassSelect" required disabled>
+                            <option value="">Select Education Level First</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Stream *</label>
+                        <select name="stream" id="exportStreamSelect" required disabled onchange="updateExportDepartmentSection()">
+                            <option value="">Select Education Level First</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Department field (only for Graduation/Post Graduate) -->
+                    <div class="form-group" id="exportDepartmentGroup" style="display: none;">
+                        <label>Department</label>
+                        <select name="department" id="exportDepartmentSelect">
+                            <option value="">All Departments</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Section field (for Intermediate or Commerce in Graduation/PG) -->
+                    <div class="form-group" id="exportSectionGroup" style="display: none;">
+                        <label>Section</label>
+                        <select name="section" id="exportSectionSelect">
+                            <option value="">All Sections</option>
+                            <option value="A">Section A</option>
+                            <option value="B">Section B</option>
+                            <option value="C">Section C</option>
+                            <option value="D">Section D</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">📥 Download Excel</button>
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('studentFormArea').innerHTML=''">Cancel</button>
+                </div>
+            </form>
+        </div>
+    `;
+}
 
+function updateExportFields() {
+    const educationLevel = document.getElementById('exportEducationLevel').value;
+    const classSelect = document.getElementById('exportClassSelect');
+    const streamSelect = document.getElementById('exportStreamSelect');
+    const departmentGroup = document.getElementById('exportDepartmentGroup');
+    const sectionGroup = document.getElementById('exportSectionGroup');
+    
+    // Reset all fields
+    classSelect.disabled = true;
+    streamSelect.disabled = true;
+    departmentGroup.style.display = 'none';
+    document.getElementById('ttSectionGroup').style.display = 'none';
+    sectionGroup.style.display = 'none';
+    
+    if (educationLevel && educationStructure[educationLevel]) {
+        // Update Class dropdown
+        classSelect.disabled = false;
+        classSelect.innerHTML = '<option value="">Select Class</option>' +
+            educationStructure[educationLevel].classes.map(c => 
+                `<option value="${c}">${c}</option>`
+            ).join('');
+        
+        // Update Stream dropdown
+        streamSelect.disabled = false;
+        streamSelect.innerHTML = '<option value="">Select Stream</option>' +
+            educationStructure[educationLevel].streams.map(s => 
+                `<option value="${s}">${s}</option>`
+            ).join('');
+        
+        // Show Section for Intermediate
+        if (educationLevel === 'Intermediate') {
+            sectionGroup.style.display = 'block';
+        }
+        
+        // Show Department for Graduation/Post Graduate
+        if (educationLevel === 'Graduation' || educationLevel === 'Post Graduate') {
+            departmentGroup.style.display = 'block';
+            const deptSelect = document.getElementById('exportDepartmentSelect');
+            deptSelect.innerHTML = '<option value="">All Departments</option>' +
+                educationStructure[educationLevel].departments.map(d => 
+                    `<option value="${d}">${d}</option>`
+                ).join('');
+        }
+    }
+}
 
+function updateExportDepartmentSection() {
+    const educationLevel = document.getElementById('exportEducationLevel').value;
+    const stream = document.getElementById('exportStreamSelect').value;
+    const sectionGroup = document.getElementById('exportSectionGroup');
+    
+    // Show Section only for Commerce stream in Graduation/Post Graduate
+    if ((educationLevel === 'Graduation' || educationLevel === 'Post Graduate') && stream === 'Commerce') {
+        sectionGroup.style.display = 'block';
+    } else if (educationLevel === 'Intermediate') {
+        sectionGroup.style.display = 'block';
+    } else {
+        sectionGroup.style.display = 'none';
+    }
+}
 
-
+function exportStudentsToExcel(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    
+    const filters = {
+        educationLevel: formData.get('educationLevel'),
+        class: formData.get('class'),
+        stream: formData.get('stream'),
+        department: formData.get('department') || '',
+        section: formData.get('section') || ''
+    };
+    
+    // Filter students based on criteria
+    let filteredStudents = students.filter(student => {
+        let match = true;
+        
+        if (filters.educationLevel && student.educationLevel !== filters.educationLevel) match = false;
+        if (filters.class && student.class !== filters.class) match = false;
+        if (filters.stream && student.stream !== filters.stream) match = false;
+        if (filters.department && student.department !== filters.department) match = false;
+        if (filters.section && student.section !== filters.section) match = false;
+        
+        return match;
+    });
+    
+    if (filteredStudents.length === 0) {
+        alert('No students found with the selected criteria!');
+        return;
+    }
+    
+    // Prepare data for Excel
+    const excelData = filteredStudents.map(student => ({
+        'Roll Number': student.rollNo,
+        'Student Name': student.studentName,
+        'Father Name': student.fatherName,
+        'Mother Name': student.motherName,
+        'Email': student.email,
+        'Contact Number': student.contactNo,
+        'Address': student.address,
+        'Education Level': student.educationLevel,
+        'Class': student.class,
+        'Stream': student.stream,
+        'Department': student.department || 'N/A',
+        'Section': student.section || 'N/A',
+        'Admission Date': student.admissionDate,
+        'Date of Birth': student.dob,
+        'Gender': student.gender,
+        'Blood Group': student.bloodGroup,
+        'Caste': student.caste,
+        'Religion': student.religion,
+        'Nationality': student.nationality,
+        'Total Fees': student.totalFees,
+        'Paid Fees': student.paidFees,
+        'Pending Fees': student.totalFees - student.paidFees
+    }));
+    
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Students Data');
+    
+    // Generate filename
+    const filename = `Students_${filters.educationLevel}_${filters.class}_${filters.stream}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    
+    // Download file
+    XLSX.writeFile(wb, filename);
+    // Show success message
+    document.getElementById('studentFormArea').innerHTML = `
+        <div class="message success-message">
+            ✅ Excel file downloaded successfully!<br>
+            Found ${filteredStudents.length} student(s)<br>
+            File: ${filename}
+        </div>
+    `;
+    
+    setTimeout(() => {
+        document.getElementById('studentFormArea').innerHTML = '';
+    }, 3000);
+}
