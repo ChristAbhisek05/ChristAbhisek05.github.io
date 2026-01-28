@@ -4226,23 +4226,19 @@ function showAttendanceRegister() {
                         <canvas id="faceCanvas" style="display:none;"></canvas>
                         
                     <div class="camera-controls">
-                            <button class="btn-primary" onclick="startCamera()">📷 Start Camera</button>
-                            <button class="btn-secondary" onclick="stopCamera()">⏹️ Stop Camera</button>
-                        </div>
-                        
-                        <div class="auto-detect-toggle" style="margin: 15px 0; display: flex; align-items: center; gap: 10px;">
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="autoDetectToggle" onchange="toggleAutoDetection()">
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="toggle-label" style="font-size: 16px; font-weight: 500;">🤖 Automatic Face Detection</span>
+                            <button class="btn-primary" id="detectionButton" onclick="toggleAutoDetectionSystem()">
+                                🚀 Start Automatic Detection
+                            </button>
                         </div>
                         
                         <div id="detectionStatus" class="status-message"></div>
-                        <div id="detectionInfo" class="detection-info" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 5px;">
-                            <p style="margin: 5px 0;">📊 Scans Completed: <span id="detectionCount" style="font-weight: bold; color: #4CAF50;">0</span></p>
-                            <p style="margin: 5px 0;">⏱️ Last Scan: <span id="lastScan" style="font-weight: bold;">Not started</span></p>
-                            <p style="margin: 5px 0;">👥 Students Detected: <span id="studentsDetected" style="font-weight: bold; color: #2196F3;">0</span></p>
+                        
+                        <div id="detectionInfo" class="detection-info" style="margin-top: 15px; padding: 15px; background: #f0f0f0; border-radius: 8px; display: none;">
+                            <h4 style="margin: 0 0 10px 0; color: #333;">📊 Detection Statistics</h4>
+                            <p style="margin: 8px 0;">🔄 Scans Completed: <span id="detectionCount" style="font-weight: bold; color: #4CAF50;">0</span></p>
+                            <p style="margin: 8px 0;">⏱️ Last Scan: <span id="lastScan" style="font-weight: bold;">Not started</span></p>
+                            <p style="margin: 8px 0;">👥 Students Detected: <span id="studentsDetected" style="font-weight: bold; color: #2196F3;">0</span></p>
+                            <p style="margin: 8px 0;">✅ Status: <span id="systemStatus" style="font-weight: bold; color: #4CAF50;">Running...</span></p>
                         </div>
                     </div>
 
@@ -5888,162 +5884,6 @@ function exportStudentsToExcel(event) {
     setTimeout(() => {
         document.getElementById('studentFormArea').innerHTML = '';
     }, 3000);
-}
-
-
-
-// ==========================================
-// AUTOMATIC FACE DETECTION SYSTEM
-// ==========================================
-
-let autoDetectionInterval = null;
-let detectionCount = 0;
-let isAutoDetecting = false;
-
-function toggleAutoDetection() {
-    const toggle = document.getElementById('autoDetectToggle');
-    isAutoDetecting = toggle.checked;
-    
-    if (isAutoDetecting) {
-        startAutoDetection();
-    } else {
-        stopAutoDetection();
-    }
-}
-
-function startAutoDetection() {
-    const video = document.getElementById('cameraFeed');
-    
-    if (!video || !video.srcObject) {
-        alert('⚠️ Please start the camera first!');
-        document.getElementById('autoDetectToggle').checked = false;
-        isAutoDetecting = false;
-        return;
-    }
-    
-    document.getElementById('detectionStatus').innerHTML = 
-        '<span style="color: #4CAF50;">✅ Automatic detection started! Scanning every 3 seconds...</span>';
-    
-    // Scan every 3 seconds
-    autoDetectionInterval = setInterval(() => {
-        if (isAutoDetecting) {
-            autoDetectAndMark();
-        }
-    }, 3000);
-}
-
-function stopAutoDetection() {
-    if (autoDetectionInterval) {
-        clearInterval(autoDetectionInterval);
-        autoDetectionInterval = null;
-    }
-    
-    document.getElementById('detectionStatus').innerHTML = 
-        '<span style="color: #FF9800;">⏸️ Automatic detection paused</span>';
-}
-
-function autoDetectAndMark() {
-    const video = document.getElementById('cameraFeed');
-    const canvas = document.getElementById('faceCanvas');
-    const context = canvas.getContext('2d');
-    
-    // Capture frame
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0);
-    
-    // Update scan count
-    detectionCount++;
-    document.getElementById('detectionCount').textContent = detectionCount;
-    document.getElementById('lastScan').textContent = new Date().toLocaleTimeString();
-    
-    // Simulate face detection (In real app, you'd use face-api.js or similar)
-    const detectedStudent = simulateFaceRecognition();
-    
-    if (detectedStudent) {
-        const success = markAttendanceForStudent(detectedStudent);
-        
-        if (success) {
-            updateRecognizedList(detectedStudent);
-            
-            // Update detected count
-            const currentCount = parseInt(document.getElementById('studentsDetected').textContent);
-            document.getElementById('studentsDetected').textContent = currentCount + 1;
-            
-            // Flash success
-            const status = document.getElementById('detectionStatus');
-            status.innerHTML = `<span style="color: #4CAF50;">✅ Detected: ${detectedStudent.studentName} - Attendance marked!</span>`;
-            
-            // Play success sound (optional)
-            playNotificationSound();
-        }
-    }
-}
-
-function playNotificationSound() {
-    // Create a simple beep sound
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.2);
-}
-
-// Update markAttendanceForStudent to return success status
-function markAttendanceForStudent(student) {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Check if already marked
-    const existing = attendance.find(a => 
-        a.rollNo === student.rollNo && a.date === today
-    );
-    
-    if (!existing) {
-        attendance.push({
-            rollNo: student.rollNo,
-            studentName: student.studentName,
-            date: today,
-            status: 'Present',
-            markedBy: currentUser.username,
-            method: 'Automatic Facial Recognition',
-            timestamp: new Date().toLocaleTimeString()
-        });
-        
-        return true; // Success
-    }
-    
-    return false; // Already marked
-}
-
-// Update stopCamera to also stop auto detection
-const originalStopCamera = stopCamera;
-stopCamera = function() {
-    stopAutoDetection();
-    document.getElementById('autoDetectToggle').checked = false;
-    isAutoDetecting = false;
-    
-    if (typeof originalStopCamera === 'function') {
-        originalStopCamera();
-    } else {
-        // Fallback stop camera code
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(track => track.stop());
-            cameraStream = null;
-            document.getElementById('cameraFeed').srcObject = null;
-            document.getElementById('detectionStatus').innerHTML = 
-                '<span style="color: gray;">⏹️ Camera stopped</span>';
-        }
-    }
 };
 
 
